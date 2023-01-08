@@ -178,6 +178,9 @@ Options:
   -v, --verbose          show verbose output
   -d, --debug            show debugging information
   -n, --no-colors        disable ANSI-Colors
+  -f, --file=CFGFILE     load another config-file
+                         (default is 
+						  ~/.config/checkmail/checkmail.ini)
 		
   
 Commands:
