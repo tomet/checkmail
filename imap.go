@@ -9,7 +9,7 @@ import (
 // Connect, Login and Logout
 //--------------------------------------------------------------------------------
 
-func connect(server string) (cl *client.Client) {
+func login(server, user, passwd string) (cl *client.Client) {
 	var err error
 	if opts.NoTls {
 		debug("Connect to %q (no TLS)", server)
@@ -21,19 +21,18 @@ func connect(server string) (cl *client.Client) {
 	if err != nil {
 		failure("Connection to %q failed: %s", server, err)
 	}
+	
+	debug("Log in as %q", user)
+	if err := cl.Login(user, passwd); err != nil {
+		failure("Login failed: %s", err)
+	}
+	
 	return cl
 }
 
 func logout(cl *client.Client) {
 	debug("Logging out")
 	cl.Logout()
-}
-
-func login(cl *client.Client, user, password string) {
-	debug("Log in as %q", user)
-	if err := cl.Login(cfg.User, password); err != nil {
-		failure("Login failed: %s", err)
-	}
 }
 
 func selectMailbox(cl *client.Client, box string) *imap.MailboxStatus {

@@ -4,34 +4,39 @@ import (
 	"fmt"
 
 	"github.com/emersion/go-imap"
-	"github.com/emersion/go-imap/client"
 )
 
 //--------------------------------------------------------------------------------
 // count [all|seen|unseen]
 //--------------------------------------------------------------------------------
 
-func countCmd(cl *client.Client, arg string) {
-	var seen, unseen []uint32
+func countCmd(cfg *Config, arg string) {
 	showSeen := false
 	showUnseen := false
 
-	selectMailbox(cl, cfg.Mailbox)
-
 	switch arg {
 	case "", "all":
-		seen = searchSeen(cl)
-		unseen = searchUnseen(cl)
 		showSeen = true
 		showUnseen = true
 	case "seen":
-		seen = searchSeen(cl)
 		showSeen = true
 	case "unseen":
-		unseen = searchUnseen(cl)
 		showUnseen = true
 	default:
 		syntax("invalid argument for count: %s", arg)
+	}
+
+	cl := login(cfg.Server, cfg.User, cfg.Password)
+	defer logout(cl)
+
+	selectMailbox(cl, cfg.Mailbox)
+
+	var seen, unseen []uint32
+	if showSeen {
+		seen = searchSeen(cl)
+	}
+	if showUnseen {
+		unseen = searchUnseen(cl)
 	}
 
 	if opts.Verbose {
@@ -49,8 +54,8 @@ func countCmd(cl *client.Client, arg string) {
 		switch {
 		case showSeen && showUnseen:
 			info(
-				"%s/%s", 
-				formatCount(len(unseen), unseenColor), 
+				"%s/%s",
+				formatCount(len(unseen), unseenColor),
 				formatCount(len(unseen)+len(seen), totalColor),
 			)
 		case showSeen:
@@ -69,44 +74,43 @@ func formatCount(count int, colorFn func(...any) string) string {
 // list [boxes|seen|unseen|all]
 //--------------------------------------------------------------------------------
 
-func listCmd(cl *client.Client, arg string) {
-	var envs []*imap.Envelope
+func listCmd(cfg *Config, arg string) {
+	searchFn := searchAll
 
 	switch arg {
 	case "mailboxes", "boxes", "mailbox", "box":
-		boxes := searchMailboxes(cl)
-		verbose("Mailboxes of %s:", cfg.User)
-		for _, box := range boxes {
-			info("%s", box)
-		}
+		listMailboxes(cfg)
 		return
 	case "unseen", "":
-		selectMailbox(cl, cfg.Mailbox)
-		envs = getMessageEnvelopes(cl, searchUnseen(cl))
+		searchFn = searchUnseen
 	case "seen":
-		selectMailbox(cl, cfg.Mailbox)
-		envs = getMessageEnvelopes(cl, searchSeen(cl))
+		searchFn = searchSeen
 	case "all":
-		selectMailbox(cl, cfg.Mailbox)
-		envs = getMessageEnvelopes(cl, searchAll(cl))
+		searchFn = searchAll
 	default:
 		syntax("invalid argument for list: %q", arg)
 	}
+
+	cl := login(cfg.Server, cfg.User, cfg.Password)
+	defer logout(cl)
+
+	selectMailbox(cl, cfg.Mailbox)
+	envs := getMessageEnvelopes(cl, searchFn(cl))
 
 	totalW := terminalWidth()
 	fromW := 0
 	dateW := 10
 	maxFromW := 40
-	
+
 	for _, env := range envs {
 		from := formatFirstAddress(env.From)
 		fromW = maxOf(fromW, utf8Len(from))
 	}
-	
+
 	if fromW > maxFromW {
 		fromW = maxFromW
 	}
-	
+
 	subjW := totalW - (fromW + 1 + dateW + 1)
 	subjW = maxOf(subjW, 15)
 
@@ -131,24 +135,39 @@ func formatFirstAddress(addrs []*imap.Address) string {
 	return first
 }
 
+func listMailboxes(cfg *Config) {
+	cl := login(cfg.Server, cfg.User, cfg.Password)
+	defer logout(cl)
+	
+	boxes := searchMailboxes(cl)
+	
+	verbose("Mailboxes of %s:", cfg.User)
+	for _, box := range boxes {
+		info("%s", box)
+	}
+}
+
 //--------------------------------------------------------------------------------
 // touch
 //--------------------------------------------------------------------------------
 
-func touchCmd(cl *client.Client, arg string) {
+func touchCmd(cfg *Config, arg string) {
 	if arg != "" {
 		syntax("command 'touch' required NO argument")
 	}
+
+	cl := login(cfg.Server, cfg.User, cfg.Password)
+	defer logout(cl)
 	
 	selectMailbox(cl, cfg.Mailbox)
 	unseen := searchUnseen(cl)
-	
+
 	if len(unseen) == 0 {
 		info("No unseen messages to mark.")
 		return
 	}
-	
+
 	markSeen(cl, unseen)
-	
+
 	info("%d messages marked as seen", len(unseen))
 }

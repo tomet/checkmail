@@ -35,7 +35,6 @@ const (
 
 var (
 	opts Opts
-	cfg  *Config
 
 	dateColor = color.New(color.FgYellow).SprintFunc()
 	addrColor = color.New(color.FgGreen).SprintFunc()
@@ -50,8 +49,11 @@ var (
 //--------------------------------------------------------------------------------
 
 func main() {
+	
 	cmd, arg := parseCmdline()
-
+	
+	var cfg *Config
+	
 	if opts.File == "" {
 		cfg = loadConfigFile(DefaultConfigFile, false)
 	} else {
@@ -60,18 +62,13 @@ func main() {
 
 	prepareConfig(cfg, &opts)
 
-	cl := connect(cfg.Server)
-	defer logout(cl)
-
-	login(cl, cfg.User, cfg.Password)
-
 	switch cmd {
 	case "", "count":
-		countCmd(cl, arg)
+		countCmd(cfg, arg)
 	case "list":
-		listCmd(cl, arg)
+		listCmd(cfg, arg)
 	case "touch":
-		touchCmd(cl, arg)
+		touchCmd(cfg, arg)
 	default:
 		syntax("unknown command: %q", cmd)
 	}
