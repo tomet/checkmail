@@ -29,7 +29,7 @@ type Opts struct {
 }
 
 const (
-	Version           = "0.1"
+	Version           = "0.2"
 	DefaultConfigFile = "~/.config/checkmail/checkmail.ini"
 )
 
